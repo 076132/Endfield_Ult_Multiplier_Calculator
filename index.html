@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title> 엔드필드 궁극기 충전량 계산기</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .input-group { margin-bottom: 8px; }
+        label { display: inline-block; }
+        input { padding: 2px; width: 70px; }
+        button { padding: 5px 10px; margin: 2px 0px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 3px; }
+        table { border-collapse: collapse; margin-top: 5px; }
+        th { background-color: #f4f4f4; border: 1px solid #ddd; padding: 10px; text-align: center; }
+		td { border: 1px solid #ddd; padding: 3px; text-align: center; }
+        tr:hover { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+    <h2>엔드필드 궁극기 충전량 계산기</h2>
+
+    <div class="input-group">
+        <label for="inputA">기본 필요 궁극기 게이지:</label>
+        <input type="number" id="inputA" min="10" step="1" placeholder="100">
+    </div>
+    <div class="input-group">
+        <label for="inputB">게이지량 감소 (%):</label>
+        <input type="number" id="inputB" min="0" step="0.1" placeholder="15">
+    </div>
+	<div class="input-group"  style = "font-size: 0.8em">
+        <label for="inputC">최대 연계-배틀스킬 횟수 차이:</label>
+        <input type="number" id="inputC" min="0" step="1" value="3" placeholder="모두 표시">
+    </div>
+    <button onclick="calculate(0)">계산 (궁극기 충전량 순)</button>
+	 <button onclick="calculate(1)">계산 (연계 스킬 횟수 순)</button>
+	  <button onclick="calculate(2)">계산 (배틀 스킬 횟수 순)</button>
+	<div style="margin-top: 10px; font-weight: bold; font-size: 1.1em;">
+		목표 게이지: <span id="targetValue">-</span>
+	</div>
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th style="width: 30%;">궁극기 충전량 (%)</th>
+                <th style="width: 70px;">연계</th>
+                <th style="width: 70px;"> 배틀</th>
+                <th> 세부 계산</th>
+            </tr>
+        </thead>
+        <tbody id="resultBody">
+            <!-- 결과가 여기에 출력됩니다 -->
+        </tbody>
+    </table>
+	
+	 <h3 id = "section2" style = "margin: 30px 0px 0px 0px;"> 세부 계산</h3>
+	 <div class="input-group" style = "font-size: 1.1em">
+	 <label for="inputTG">목표 게이지:</label>
+        <input type="number" id="inputTG" min="10" step="1" placeholder="100" oninput="spCalc()">
+    </div>
+	<div class="input-group" style = "font-size: 1.0em">
+        <label for="inputX">연계 발동 횟수 :</label>
+        <input type="number" id="inputX" min="0" step="1" placeholder="1" oninput="spCalc()">
+        <label for="inputY">배틀 발동 횟수:</label>
+        <input type="number" id="inputY" min="0" step="1" placeholder="3" oninput="spCalc()">
+	</div>
+	<div style="margin-bottom: 10px; font-weight: bold; font-size: 1.1em;">
+		필요 궁극기 충전량: <span id="spResult">-</span> %
+	</div>
+	<div id="dynamicContainerSPReturn"></div>
+	<div id="dynamicContainerBonus"></div>
+	<button onclick="addNewInput(0)"> SP 반환값 추가 (+)</button>
+	<button onclick="addNewInput(1)"> 추가 궁극기 게이지 값 추가 (+)</button>
+	
+    <script>
+		function addNewInput(arg) {
+			let container = document.getElementById('dynamicContainerSPReturn');
+			if  (arg === 1) {
+				container = document.getElementById('dynamicContainerBonus');
+			}
+			
+			const rowDiv = document.createElement('div');
+			 // 행을 식별할 클래스
+			if (arg === 0) {
+				rowDiv.className = 'input-row-spreturn';
+			} else if (arg == 1) {
+				rowDiv.className = 'input-row-bonus';
+			}
+			rowDiv.style.display = 'flex';
+			rowDiv.style.gap = '10px';
+			rowDiv.style.marginBottom = '8px';
+			rowDiv.style.alignItems = 'center';
+			
+			if (arg === 0) {
+				rowDiv.innerHTML = '<span> SP 반환값:</span>';
+			} else if (arg == 1) {
+				rowDiv.innerHTML = '<span> 추가 충전값:</span>';
+			} else {
+				rowDiv.innerHTML = ' ';
+			}
+			rowDiv.innerHTML += `
+				<input type="number" class="val1" placeholder="값" style="width: 80px;" oninput="spCalc()">
+				<span> 횟수: </span>
+				<input type="number" class="val2" placeholder="횟수" style="width: 80px;" value="1" oninput="spCalc()">
+				<button onclick="this.parentElement.remove(); spCalc();" 
+						style="background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer; padding: 2px 8px;">
+					삭제
+				</button>
+			`;
+			
+			container.appendChild(rowDiv);
+		}
+		
+		function spCalc() {
+			const X = parseInt(document.getElementById('inputX').value);
+            const Y = parseInt(document.getElementById('inputY').value);
+			const TG = parseFloat(document.getElementById('inputTG').value);
+			
+			if (isNaN(X) || isNaN(Y) || isNaN(TG)) {
+				return;
+			}
+			
+			const resultDisplay = document.getElementById('spResult');
+		
+			const row_spr = document.querySelectorAll('.input-row-spreturn');
+			const row_bonus = document.querySelectorAll('.input-row-bonus');
+			
+			let spReturn_sum = 0;
+			row_spr.forEach(row => {
+				const v1 = parseInt(row.querySelector('.val1').value) || 0;
+				const v2 = parseInt(row.querySelector('.val2').value) || 0;
+				
+				// 반환 SP 값 그대로 입력 -> 나중에 *-0.01 *6.5해야 됨
+				spReturn_sum += (v1 * v2);
+			});
+			
+			let bonus_sum = 0;
+			row_bonus.forEach(row => {
+				const v1 = parseInt(row.querySelector('.val1').value) || 0;
+				const v2 = parseInt(row.querySelector('.val2').value) || 0;
+				
+				// 얘는 그대로 반영됨
+				bonus_sum += (v1 * v2);
+			});
+			const baseUltCharge = 10 * X + 6.5 * Y + (spReturn_sum * -0.065) + (bonus_sum);
+			if (baseUltCharge <= 0) {
+				return;
+			}
+			const result = TG / baseUltCharge * 100.0;
+			const ceiledResult = Math.ceil(result * 100) / 100;
+			resultDisplay.innerText = ceiledResult.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
+		}
+		
+		function applyValue(x, y, tg) {
+			document.getElementById('inputX').value = x;
+			document.getElementById('inputY').value = y;
+			document.getElementById('inputTG').value = tg;
+		}
+		
+        function calculate(arg) {
+			const _MaxUltMultiplier = 300.0;
+		
+            const A = parseInt(document.getElementById('inputA').value);
+            const B = parseFloat(document.getElementById('inputB').value);
+			const C = parseInt(document.getElementById('inputC').value) || 10000;
+			
+            if (isNaN(A)) {
+                alert("기본 궁극기 게이지량을 입력해주세요.");
+                return;
+            }
+			
+            const resultBody = document.getElementById('resultBody');
+			const targetDisplay = document.getElementById('targetValue');
+			
+			let target;
+
+			resultBody.innerHTML = ""; // 기존 결과 초기화
+			
+			 if (!isNaN(B)) {
+                target = A * (1 - B / 100);
+            } else {
+				target = A;
+			}
+            
+			targetDisplay.innerText = target.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
+			
+			resultBody.innerHTML = "";
+			
+            let solutions = [];
+
+			const maxBSVal = Math.ceil(target / 10) + 1;
+			const maxTSVal = Math.ceil(target / 6.5) + 1;
+
+			for (let i = 0; i <= maxBSVal; i++) {
+				for (let j=0; j <= maxTSVal; j++) {
+					if (Math.abs(i - j) >= C) {
+						continue;
+					}
+				
+					let baseUltCharge = 10 * i + 6.5 * j;
+					if  (baseUltCharge < 0.1) { // 0, 0
+						continue;
+					}
+					if (baseUltCharge > target) { // no need ult Mult
+						break;
+					}
+					let ultMultiplier = target / baseUltCharge * 100.0;
+					if (ultMultiplier > _MaxUltMultiplier) { // > 300%
+						continue;
+					}
+					
+					const ceiledResult = Math.ceil(ultMultiplier * 100) / 100;
+					solutions.push({ val: ceiledResult, x: i, y: j });
+					
+				}
+			}
+
+            // 중복되거나 비효율적인 해 필터링 (불필요하게 큰 값 제거)
+            // 예: (X=10, Y=2)가 있는데 (X=11, Y=2)가 나오는 경우 제외
+            let uniqueSolutions = solutions.filter((sol, index, self) =>
+                index === self.findIndex((t) => t.x === sol.x && t.y === sol.y)
+            );
+			
+			if (arg === 0) {
+				uniqueSolutions.sort((a, b) => a.val - b.val);
+			} else if (arg === 1) {
+				uniqueSolutions.sort((a, b) => a.x- b.x);
+			} else if (arg === 2) {
+				uniqueSolutions.sort((a, b) => a.y- b.y);
+			}
+
+            // 화면에 출력
+            uniqueSolutions.forEach(sol => {
+                const row = `<tr>
+					<td>${sol.val.toFixed(2)}</td>
+                    <td>${sol.x}</td>
+                    <td>${sol.y}</td>
+                    <td>
+						<!-- 클릭 시 applyValue 함수를 호출하는 버튼 -->
+						<button onclick="applyValue(${sol.x}, ${sol.y}, ${target}); location.href = '#section2'; spCalc();" 
+								style="background:#28a745; padding: 2px 10px; " >
+							입력
+						</button>
+				</td>
+                </tr>`;
+                resultBody.innerHTML += row;
+            });
+        }
+    </script>
+</body>
+</html>
