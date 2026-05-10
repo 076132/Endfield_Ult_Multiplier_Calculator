@@ -29,8 +29,12 @@
         <input type="number" id="inputB" min="0" step="0.1" placeholder="15">
     </div>
 	<div class="input-group">
-        <label for="inputTS">연계 스킬 게이지 충전량:</label>
-        <input type="number" id="inputTS" min="1" step="0.1" placeholder="10" value="10">
+        <label for="inputTS" style="font-size: 0.9em">연계 스킬 게이지 충전량:</label>
+        <input type="number" id="inputTS" min="0" step="0.1" placeholder="10" value="10">
+    </div>
+	<div class="input-group">
+        <label for="inputTS" style="font-size: 0.9em">배틀 스킬 게이지 충전량:</label>
+        <input type="number" id="inputBS" min="0" step="0.1" placeholder="6.5" value="6.5">
     </div>
 	<div class="input-group"  style = "font-size: 0.8em">
         <label for="inputC">최대 연계-배틀스킬 횟수 차이:</label>
@@ -60,8 +64,12 @@
 	 <div class="input-group" style = "font-size: 1.1em">
 	 <label for="inputTG">목표 게이지:</label>
         <input type="number" id="inputTG" min="10" step="1" placeholder="100" oninput="spCalc()">
+	</div>
+	<div class="input-group" style = "font-size: 1.0em">
 		<label for="inputTS_sp">연계 스킬 충전량:</label>
-        <input type="number" id="inputTS_sp" min="1" step="0.1" placeholder="10" value="10" oninput="spCalc()">
+        <input type="number" id="inputTS_sp" min="0" step="0.1" placeholder="10" value="10" oninput="spCalc()">
+		<label for="inputTS_sp">배틀 스킬 충전량:</label>
+        <input type="number" id="inputBS_sp" min="0" step="0.1" placeholder="6.5" value="6.5" oninput="spCalc()">
     </div>
 	<div class="input-group" style = "font-size: 1.0em">
         <label for="inputX">연계 발동 횟수 :</label>
@@ -120,7 +128,12 @@
 			const X = parseInt(document.getElementById('inputX').value);
             const Y = parseInt(document.getElementById('inputY').value);
 			const TG = parseFloat(document.getElementById('inputTG').value);
-			const TSC = parseFloat(document.getElementById('inputTS_sp').value) || 10;
+			
+			const valTS = document.getElementById('inputTS_sp').value;
+			const TSC = (valTS === "") ? 10 : parseFloat(valTS);
+
+			const valBS = document.getElementById('inputBS_sp').value;
+			const BSC = (valBS === "") ? 6.5 : parseFloat(valBS);
 			
 			if (isNaN(X) || isNaN(Y) || isNaN(TG)) {
 				return;
@@ -148,7 +161,7 @@
 				// 얘는 그대로 반영됨
 				bonus_sum += (v1 * v2);
 			});
-			const baseUltCharge = TSC * X + 6.5 * Y + (spReturn_sum * -0.065) + (bonus_sum);
+			const baseUltCharge = TSC * X + BSC * Y + (spReturn_sum * -0.01 * BSC) + (bonus_sum);
 			if (baseUltCharge <= 0) {
 				return;
 			}
@@ -157,11 +170,12 @@
 			resultDisplay.innerText = ceiledResult.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
 		}
 		
-		function applyValue(x, y, tg, tsc) {
+		function applyValue(x, y, tg, tsc, bsc) {
 			document.getElementById('inputX').value = x;
 			document.getElementById('inputY').value = y;
 			document.getElementById('inputTG').value = tg;
 			document.getElementById('inputTS_sp').value = tsc;
+			document.getElementById('inputBS_sp').value = bsc;
 		}
 		
         function calculate(arg) {
@@ -169,8 +183,15 @@
 		
             const A = parseInt(document.getElementById('inputA').value);
             const B = parseFloat(document.getElementById('inputB').value);
-			const C = parseInt(document.getElementById('inputC').value) || 10000;
-			const TSC = parseFloat(document.getElementById('inputTS').value) || 10;
+			
+			const valC= document.getElementById('inputC').value;
+			const C = (valC === "") ? 10000 : parseFloat(valC);
+			
+			const valTS = document.getElementById('inputTS').value;
+			const TSC = (valTS === "") ? 10 : parseFloat(valTS);
+
+			const valBS = document.getElementById('inputBS').value;
+			const BSC = (valBS === "") ? 6.5 : parseFloat(valBS);
 			
             if (isNaN(A)) {
                 alert("기본 궁극기 게이지량을 입력해주세요.");
@@ -195,21 +216,28 @@
 			resultBody.innerHTML = "";
 			
             let solutions = [];
+			
+			let maxBSVal = 10;
+			if (BSC >= 0.1) {
+				maxBSVal = Math.ceil(target / BSC) + 1;
+			}
+			
+			let maxTSVal = 10;
+			if (TSC >= 0.1) {
+				maxTSVal = Math.ceil(target / TSC) + 1;
+			}
 
-			const maxBSVal = Math.ceil(target / TSC) + 1;
-			const maxTSVal = Math.ceil(target / 6.5) + 1;
-
-			for (let i = 0; i <= maxBSVal; i++) {
-				for (let j=0; j <= maxTSVal; j++) {
+			for (let i = 0; i <= maxTSVal; i++) { // 연계
+				for (let j=0; j <= maxBSVal; j++) { // 배틀
 					if (Math.abs(i - j) >= C) {
 						continue;
 					}
 				
-					let baseUltCharge = TSC * i + 6.5 * j;
+					let baseUltCharge = TSC * i + BSC * j;
 					if  (baseUltCharge < 0.1) { // 0, 0
 						continue;
 					}
-					if (baseUltCharge > target) { // no need ult Mult
+					if (baseUltCharge > target + 0.001) { // no need ult Mult
 						break;
 					}
 					let ultMultiplier = target / baseUltCharge * 100.0;
@@ -223,11 +251,24 @@
 				}
 			}
 
-            // 중복되거나 비효율적인 해 필터링 (불필요하게 큰 값 제거)
-            // 예: (X=10, Y=2)가 있는데 (X=11, Y=2)가 나오는 경우 제외
             let uniqueSolutions = solutions.filter((sol, index, self) =>
                 index === self.findIndex((t) => t.x === sol.x && t.y === sol.y)
             );
+			
+			uniqueSolutions = solutions.filter((sol, index, self) =>
+			index === self.findIndex((t) => (
+					t.val === sol.val &&
+					t.y === sol.y
+				))
+			);
+			
+			uniqueSolutions = solutions.filter((sol, index, self) =>
+			index === self.findIndex((t) => (
+					t.val === sol.val &&
+					t.x === sol.x
+				))
+			);
+
 			
 			if (arg === 0) {
 				uniqueSolutions.sort((a, b) => a.val - b.val);
@@ -245,7 +286,7 @@
                     <td>${sol.y}</td>
                     <td>
 						<!-- 클릭 시 applyValue 함수를 호출하는 버튼 -->
-						<button onclick="applyValue(${sol.x}, ${sol.y}, ${target}, ${TSC}); location.href = '#section2'; spCalc();" 
+						<button onclick="applyValue(${sol.x}, ${sol.y}, ${target}, ${TSC},  ${BSC}  ); location.href = '#section2'; spCalc();" 
 								style="background:#28a745; padding: 2px 10px; " >
 							입력
 						</button>
