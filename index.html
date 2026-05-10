@@ -28,6 +28,10 @@
         <label for="inputB">게이지량 감소 (%):</label>
         <input type="number" id="inputB" min="0" step="0.1" placeholder="15">
     </div>
+	<div class="input-group">
+        <label for="inputTS">연계 스킬 게이지 충전량:</label>
+        <input type="number" id="inputTS" min="1" step="0.1" placeholder="10" value="10">
+    </div>
 	<div class="input-group"  style = "font-size: 0.8em">
         <label for="inputC">최대 연계-배틀스킬 횟수 차이:</label>
         <input type="number" id="inputC" min="0" step="1" value="3" placeholder="모두 표시">
@@ -56,6 +60,8 @@
 	 <div class="input-group" style = "font-size: 1.1em">
 	 <label for="inputTG">목표 게이지:</label>
         <input type="number" id="inputTG" min="10" step="1" placeholder="100" oninput="spCalc()">
+		<label for="inputTS_sp">연계 스킬 충전량:</label>
+        <input type="number" id="inputTS_sp" min="1" step="0.1" placeholder="10" value="10" oninput="spCalc()">
     </div>
 	<div class="input-group" style = "font-size: 1.0em">
         <label for="inputX">연계 발동 횟수 :</label>
@@ -114,6 +120,7 @@
 			const X = parseInt(document.getElementById('inputX').value);
             const Y = parseInt(document.getElementById('inputY').value);
 			const TG = parseFloat(document.getElementById('inputTG').value);
+			const TSC = parseFloat(document.getElementById('inputTS_sp').value) || 10;
 			
 			if (isNaN(X) || isNaN(Y) || isNaN(TG)) {
 				return;
@@ -141,7 +148,7 @@
 				// 얘는 그대로 반영됨
 				bonus_sum += (v1 * v2);
 			});
-			const baseUltCharge = 10 * X + 6.5 * Y + (spReturn_sum * -0.065) + (bonus_sum);
+			const baseUltCharge = TSC * X + 6.5 * Y + (spReturn_sum * -0.065) + (bonus_sum);
 			if (baseUltCharge <= 0) {
 				return;
 			}
@@ -150,10 +157,11 @@
 			resultDisplay.innerText = ceiledResult.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
 		}
 		
-		function applyValue(x, y, tg) {
+		function applyValue(x, y, tg, tsc) {
 			document.getElementById('inputX').value = x;
 			document.getElementById('inputY').value = y;
 			document.getElementById('inputTG').value = tg;
+			document.getElementById('inputTS_sp').value = tsc;
 		}
 		
         function calculate(arg) {
@@ -162,6 +170,7 @@
             const A = parseInt(document.getElementById('inputA').value);
             const B = parseFloat(document.getElementById('inputB').value);
 			const C = parseInt(document.getElementById('inputC').value) || 10000;
+			const TSC = parseFloat(document.getElementById('inputTS').value) || 10;
 			
             if (isNaN(A)) {
                 alert("기본 궁극기 게이지량을 입력해주세요.");
@@ -187,7 +196,7 @@
 			
             let solutions = [];
 
-			const maxBSVal = Math.ceil(target / 10) + 1;
+			const maxBSVal = Math.ceil(target / TSC) + 1;
 			const maxTSVal = Math.ceil(target / 6.5) + 1;
 
 			for (let i = 0; i <= maxBSVal; i++) {
@@ -196,7 +205,7 @@
 						continue;
 					}
 				
-					let baseUltCharge = 10 * i + 6.5 * j;
+					let baseUltCharge = TSC * i + 6.5 * j;
 					if  (baseUltCharge < 0.1) { // 0, 0
 						continue;
 					}
@@ -236,7 +245,7 @@
                     <td>${sol.y}</td>
                     <td>
 						<!-- 클릭 시 applyValue 함수를 호출하는 버튼 -->
-						<button onclick="applyValue(${sol.x}, ${sol.y}, ${target}); location.href = '#section2'; spCalc();" 
+						<button onclick="applyValue(${sol.x}, ${sol.y}, ${target}, ${TSC}); location.href = '#section2'; spCalc();" 
 								style="background:#28a745; padding: 2px 10px; " >
 							입력
 						</button>
